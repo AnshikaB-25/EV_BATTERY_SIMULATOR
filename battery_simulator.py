@@ -188,6 +188,7 @@ if __name__ == "__main__":
     plt.legend()
 
     plt.tight_layout() # Adjust subplot parameters for a tight layout
+    plt.savefig('simulation_plot.png')
     plt.show() # Display the plots
 
     print("Plots generated successfully!")

@@ -6,6 +6,12 @@ This project presents a simplified Python-based simulation of an Electric Vehicl
 
 Developed by Anshika Bansal (https://github.com/AnshikaB-25).
 
+## Simulation Results
+
+Below are the generated plots showcasing the battery's behavior over the simulated duration.
+
+![Battery Simulation Plots](assets/simulation_plot.png)
+
 ## Key Features
 
 * **Coulomb Counting SoC Estimation:** Tracks the battery's charge level over time.
