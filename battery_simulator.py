@@ -155,6 +155,43 @@ if __name__ == "__main__":
     print(f"Final SoC: {socs[-1]:.2f}%")
     print(f"Final Terminal Voltage: {voltages[-1]:.2f} V")
 
+    # --- 6. Plotting Results ---
+    print("\n--- Generating Plots ---")
+
+    plt.figure(figsize=(12, 8)) # Create a figure with a specific size
+
+    # Plot 1: State of Charge (SoC)
+    plt.subplot(3, 1, 1) # 3 rows, 1 column, 1st plot
+    plt.plot(times, socs, label='State of Charge (%)', color='blue')
+    plt.title('Battery Simulation: SoC, Voltage, and Current Profile')
+    plt.ylabel('SoC (%)')
+    plt.grid(True)
+    plt.legend()
+    plt.ylim(0, 100) # Ensure y-axis for SoC is always 0-100
+
+    # Plot 2: Terminal Voltage
+    plt.subplot(3, 1, 2) # 3 rows, 1 column, 2nd plot
+    plt.plot(times, voltages, label='Terminal Voltage (V)', color='red')
+    plt.ylabel('Voltage (V)')
+    plt.grid(True)
+    plt.legend()
+    # Set realistic voltage limits based on typical Li-ion cell range
+    plt.ylim(OCV_MIN_V - 0.1, OCV_MAX_V + 0.1) 
+
+
+    # Plot 3: Current Profile
+    plt.subplot(3, 1, 3) # 3 rows, 1 column, 3rd plot
+    plt.plot(times, currents, label='Applied Current (A)', color='green')
+    plt.xlabel('Time (Hours)')
+    plt.ylabel('Current (A)')
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout() # Adjust subplot parameters for a tight layout
+    plt.show() # Display the plots
+
+    print("Plots generated successfully!")
+
     # You can inspect specific points if needed, e.g., after 1 hour (index approx 60 steps)
     # print(f"SoC after 1 hour: {socs[int(3600/TIME_STEP_SECONDS)]:.2f}%")
 
