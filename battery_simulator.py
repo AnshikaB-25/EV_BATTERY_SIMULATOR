@@ -40,6 +40,124 @@ def get_ocv(soc_percent):
     ocv_v = OCV_MIN_V + (OCV_MAX_V - OCV_MIN_V) * (soc_percent / 100)
     return ocv_v
 
+
+# --- 3. Simulation Parameters ---
+SIMULATION_DURATION_HOURS = 10 # Total simulation duration in hours
+TIME_STEP_SECONDS = 60       # Time step for simulation in seconds (e.g., 60s = 1 minute)
+
+# --- 4. Simulation Function ---
+def simulate_battery(initial_soc_percent, current_profile_amps, simulation_duration_hours, time_step_seconds):
+    """
+    Simulates the charge/discharge behavior of the battery.
+    Inputs:
+        initial_soc_percent (float): Starting State of Charge in percentage (0-100).
+        current_profile_amps (dict): Dictionary mapping time (in hours) to current (Amps).
+                                     Positive current for charging, negative for discharging.
+        simulation_duration_hours (float): Total simulation duration in hours.
+        time_step_seconds (float): Time step for the simulation in seconds.
+    Outputs:
+        time_hours (list): List of time points in hours.
+        soc_history (list): List of SoC values over time.
+        ocv_history (list): List of OCV values over time.
+        terminal_voltage_history (list): List of terminal voltage values over time.
+        current_history (list): List of current values applied over time.
+    """
+
+    # Convert duration and time step to consistent units (seconds)
+    total_steps = int((simulation_duration_hours * 3600) / time_step_seconds)
+    dt_hours = time_step_seconds / 3600.0 # Time step in hours
+
+    # Initialize lists to store simulation data
+    time_hours = []
+    soc_history = []
+    ocv_history = []
+    terminal_voltage_history = []
+    current_history = []
+
+    # Set initial SoC
+    current_soc_percent = initial_soc_percent
+
+    # Determine the current at each time step based on the profile
+    profile_times_hours = sorted(current_profile_amps.keys())
+
+    # Simulation loop
+    for i in range(total_steps + 1): # +1 to include the final time point
+        t_current_hours = i * dt_hours
+        time_hours.append(t_current_hours)
+
+        # Find the current value for the current time step
+        # This logic assumes the current profile specifies current for time intervals
+        current_amp = 0
+        for k in range(len(profile_times_hours)):
+            if t_current_hours >= profile_times_hours[k]:
+                current_amp = current_profile_amps[profile_times_hours[k]]
+            else:
+                break # Use the last valid current until the next defined time
+        current_history.append(current_amp)
+
+        # --- Battery Model Calculations ---
+
+        # 1. Update SoC using Coulomb Counting
+        # Current is in Amps, dt_hours in hours, NOMINAL_CAPACITY_AH in Ah
+        # delta_soc = (Current * time_step_hours / Nominal_Capacity_Ah) * 100
+        # For charging, current is positive, efficiency applies to incoming charge.
+        # For discharging, current is negative, efficiency applies to outgoing charge (or is 1/efficiency for calculation).
+
+        if current_amp > 0: # Charging
+            delta_soc_percent = (current_amp * dt_hours * COULOMBIC_EFFICIENCY / NOMINAL_CAPACITY_AH) * 100
+        else: # Discharging (current_amp is negative)
+            # For discharging, divide by efficiency as more charge is needed to output same useful energy
+            delta_soc_percent = (current_amp * dt_hours / COULOMBIC_EFFICIENCY / NOMINAL_CAPACITY_AH) * 100
+
+        current_soc_percent += delta_soc_percent
+
+        # Clip SoC to stay within 0-100% physically
+        current_soc_percent = np.clip(current_soc_percent, 0, 100)
+        soc_history.append(current_soc_percent)
+
+        # 2. Calculate Open Circuit Voltage (OCV)
+        ocv_v = get_ocv(current_soc_percent)
+        ocv_history.append(ocv_v)
+
+        # 3. Calculate Terminal Voltage
+        # V_terminal = OCV - (I * R_internal)
+        # Positive current (charging) means V_terminal > OCV
+        # Negative current (discharging) means V_terminal < OCV
+        terminal_voltage_v = ocv_v - (current_amp * INTERNAL_RESISTANCE_OHM)
+        terminal_voltage_history.append(terminal_voltage_v)
+
+    return time_hours, soc_history, ocv_history, terminal_voltage_history, current_history
+
+
+# --- 5. Example Usage / Main Execution Block ---
+if __name__ == "__main__":
+    print("\n--- Starting Battery Simulation ---")
+
+    # Define a simple current profile (time in hours: current in Amps)
+    # Positive current = Charging, Negative current = Discharging
+    # Example: Discharge at 10A for 5 hours, then Charge at 5A for 5 hours
+    current_profile = {
+        0: -10,  # From 0 hours, discharge at 10 Amps
+        5: 5     # From 5 hours, charge at 5 Amps
+    }
+
+    # Run the simulation
+    times, socs, ocvs, voltages, currents = simulate_battery(
+        INITIAL_SOC_PERCENT,
+        current_profile,
+        SIMULATION_DURATION_HOURS,
+        TIME_STEP_SECONDS
+    )
+
+    # Print some sample results
+    print(f"Simulation completed for {SIMULATION_DURATION_HOURS} hours.")
+    print(f"Initial SoC: {INITIAL_SOC_PERCENT:.2f}%")
+    print(f"Final SoC: {socs[-1]:.2f}%")
+    print(f"Final Terminal Voltage: {voltages[-1]:.2f} V")
+
+    # You can inspect specific points if needed, e.g., after 1 hour (index approx 60 steps)
+    # print(f"SoC after 1 hour: {socs[int(3600/TIME_STEP_SECONDS)]:.2f}%")
+
 # Test the OCV function (this part only runs when the script is executed directly)
 if __name__ == "__main__":
     print(f"--- Testing OCV Model ---")
